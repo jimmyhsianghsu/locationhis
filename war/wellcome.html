@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+		<script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+		<script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+		<script>
+			$(document).on("pageshow",function(){$('#login').click(function(){location.href='page?room&login';});});
+		</script>
+		<title>wellcome</title>
+	</head>
+	<body>
+		<div data-role="dialog">
+			<div data-role="header" data-theme="a">
+				<h1>Chatroom</h1>
+			</div>
+			<div data-role="content" data-theme="c">
+				<h1>Wellcome !</h1>
+				<a id='login' href="#" data-role="button" data-theme="b">Login</a>    
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<title>Locationhis</title>
+		<script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+		<script>
+			$(function(){});
+			var url='locationhis';
+			function ajax(action){
+				var username,password,name,pwd;
+				if(action != 'saveUser' && action != 'getUsers'){
+					username=$('#name').val();
+					password=$('#password').val();
+				}else{
+					username=$('#lat').val();
+					password=$('#lng').val();
+					name=$('#name').val();
+					pwd=$('#password').val();
+				}
+				$.ajax({
+					url:url,method:'get',dataType:'json',
+					username:username,password:password,
+					data:{action:action,name:name,password:pwd,lat:$('#lat').val(),lng:$('#lng').val(),shortName:$('#shortName').val()},
+					success:function(data){$('#divData').empty().append(tab(data));},
+					error:function(jqXHR,textStatus,errorThrown){$('#divData').append(errorMsg(jqXHR.status+':'+errorThrown));}
+					,headers:{'Authorization':'Basic '+btoa(username+':'+password)}
+					,beforeSend:function(){$('#divData').empty();}
+				});
+			}
+			function tab(data){
+				var $tab=$("<table border='1' style='border-collapse:collapse'></table>");
+				if (data){
+					if(!data.length)data=[data];
+					var $tr0=$('<tr></tr>').appendTo($tab);
+					for(var i in data[0])$tr0.append($('<td></td>').html(i));
+					for(var i in data){
+						var $tr=$('<tr></tr>').appendTo($tab);
+						for(var i1 in data[i])$tr.append($('<td></td>').html(data[i][i1]));
+					}
+				}
+				return $tab;
+			}
+			function errorMsg(msg){return $('<span style="color:red"></span>').html(msg);}
+		</script>
+	</head>
+	<body>
+		<div style="float:left;margin:15px">
+			<h3>action</h3>
+			<table border='1' style='border-collapse:collapse'>
+				<tr><td style="font-weight:bold;">name</td><td><input id='name' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">password</td><td><input id='password' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">lat</td><td><input id='lat' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">lng</td><td><input id='lng' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">shortName</td><td><input id='shortName' type='text' /></td></tr>
+				<tr>
+					<td colspan='2'>
+						<input type='button' value='getUser' onclick='ajax(this.value)' />
+						<input type='button' value='getUsers' onclick='ajax(this.value)' />
+						<input type='button' value='saveUser' onclick='ajax(this.value)' />
+						<input type='button' value='getLocations' onclick='ajax(this.value)' />
+						<input type='button' value='saveLocation' onclick='ajax(this.value)' />
+						<br/><input type='button' value='saveUserShortName' onclick='ajax(this.value)' />
+						<input type='button' value='getUserShortName' onclick='ajax(this.value)' />
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div style="float:left;margin:15px">
+			<h3>data</h3>
+			<div id='divData'></div>
+		</div>
+	</body>
+</html>

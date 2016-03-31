@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+		<script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+		<script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+		<script src="js/chatmessage.js"></script>
+		<script>
+			//$(document).on('pagebeforeshow pageinit pagecreate', function(event){console.log(event.type);});
+			var url0='chatroom',url1='page?room=',
+				uiPageActive='.ui-page-active',
+				chatPage=".chat-page",uiPage=".ui-page",uiPageActiveContent='.ui-page-active .content',uiContent='.ui-content';
+			var rec;
+			var cManager,tManager;
+			var wFlash,wFocus;
+			var msgInput;
+			var msgPopup;
+			$(document).one("pagecreate",chatPage,function(event){
+			    function navnext(next){
+			        $(":mobile-pagecontainer").pagecontainer("change",url1+next,{transition:"slide"});
+			    }
+			    function navprev(prev){
+			        $(":mobile-pagecontainer").pagecontainer("change",url1+prev,{transition:"slide",reverse:true});
+			    }
+			    $(document).on("swipeleft",uiPage,function(event){
+			        getNext($sel,$(this),1);
+			        var next = $(this).jqmData("next");
+			        if (next && (event.target === $(this)[0] || event.target.tagName != 'SPAN'))
+			        	$sel.val(next).trigger('change');
+			    });
+			    $(document).on("swiperight",uiPage,function(event){
+			    	getNext($sel,$(this),-1);
+			        var prev = $(this).jqmData("prev");
+			        if (prev && (event.target === $(this)[0] || event.target.tagName != 'SPAN'))
+			        	$sel.val(prev).trigger('change');
+			    });
+			    $(document).on("click",".prev", function(){
+			    	var t=getNext($sel,null,-1);
+			    	if(t)$sel.val(t).trigger('change');
+			    });
+			    $(document).on("click",".next", function(){
+			    	var t=getNext($sel,null,1);
+			    	if(t)$sel.val(t).trigger('change');
+			    });
+				$("#header").toolbar({theme:"b"});
+			    $("#footer").toolbar({theme:"b"});
+			    var $sel = $('#header select').bind('change',function(event,ui){
+			    	var name = $.mobile.path.parseLocation().search.replace('?room=','');
+			    	name=decodeURIComponent(name);
+			    	var val=$(this).find('option:selected').val();
+			    	var i1,i2;
+			    	$(this).children('option').each(function(i){
+			    		if($(this).val()==val)i1=i;
+			    		if($(this).val()==name)i2=i;
+			    	});
+			    	if(i1>i2) navnext(val);else if(i2>i1) navprev(val);
+				});
+				getChatroomByUser(url0,$sel);
+				ajax(url0,{action:'getName'},function(res){
+					$('#userName').html(res.name);
+					ajax('locationhis',{action:'getUserShortName'},function(res){$('#shortName').html(res.name);});
+				});
+				$('#refresh').click(function(){cManager.getChatMessages();});
+				$('#members').click(function(){
+					getMembers(url0,function(members){
+						var msg='';
+						for(var i in members) msg+=members[i]+'<br/>';
+						new MsgPopup(uiPageActive + ' .popupMsg').popup('訊息','members:',msg);
+					});
+				});
+				$(window).bind('resize', function (event) {
+			        var header_height = $("div:jqmData(role='header')").outerHeight(),
+			        	footer_height = $("div:jqmData(role='footer')").outerHeight(),
+			        	window_height = $(this).outerHeight();
+			        $(":mobile-pagecontainer").pagecontainer("getActivePage").children(uiContent)
+			        	.outerHeight(window_height-header_height-footer_height);
+			        msgInput.resize();
+				});
+				rec={};
+				cManager=new ChatManager(url0,rec);
+				tManager=new triviaManager('#trivia-button');
+				cManager.setTManager(tManager);
+				tManager.setBindBtn(function(name){$sel.val(name).trigger('change');msgInput.resize();});
+				tManager.setBindTitle(function(title){
+					msgInput.resize();
+					if(wFocus.focus || !title)document.title=url0;
+					else document.title=title;
+				});
+				wFlash=new flash().setTitle(document.title);
+				wFocus={focus:true};
+				cManager.setWFocus(wFocus);
+				msgInput=cManager.getMsgInput('#divMsgInput',
+						"div:jqmData(role='footer') div:jqmData(role='controlgroup')",
+						"div:jqmData(role='footer') a:jqmData(role='button')");
+				msgPopup=new MsgPopup('.popupMsg');
+				/*
+				setInterval(function(){
+					var clr=true;
+					for(var i in rec){
+						if(rec[i].res){
+							if(wFocus){
+								var btn='#trivia-button',t=i;
+								wFlash.start(btn,rec[i].res[0].message);
+								$(btn).unbind('click').bind('click',function(){
+									$sel.val(t).trigger('change');
+									$(this).unbind('click');
+								});
+							}else wFlash.start(document,rec[i].res[0].message);
+							clr=false;
+						}
+						getChatMessages(url0,i);
+					}
+					if(clr)wFlash.clear(true);
+				},3000);
+				*/
+				function flash(){
+					var id,title,msg,timer,time=0;
+					this.start=start;
+					this.clear=clear;
+					this.setTitle=function(_title){
+						title=_title;
+						return this;
+					};
+					function show(_id,_msg){if(_id==document)document.title=_msg;else $(_id).html(_msg);}
+					function start(_id,_msg){
+						var clr=clear(_id);
+						id=_id?_id:id;
+						msg=_msg?_msg:msg?msg:title;
+						if(clr)timer = setTimeout(function(){
+							time = (time % 2) + 1;
+							if(time==1)show(id,"【新訊息】"+msg);else show(id,"【　　　】"+msg);
+							start();
+						},500);
+					};
+					function clear(_id){
+						if(id && _id && id!=_id)show(id,title);
+						if(id!=_id){
+							clearTimeout(timer);
+							return true;
+						}
+					};
+				}
+				$(window).focus(function(){wFocus.focus=true;}).blur(function(){wFocus.focus=false;});
+				$('#logout').click(function(){ajax('chatroom',{action:'logout'});});
+			});
+			$(document).on("pageshow",chatPage,function(event){
+				// $(uiPageActiveContent).empty();
+				// getChatMessages(url0);
+				cManager.getChatMessages();
+				var $sel = $('#header select');
+				$(".next.ui-state-disabled,.prev.ui-state-disabled").removeClass("ui-state-disabled");
+				var next = getNext($sel,null,1);
+				if(next) $(":mobile-pagecontainer").pagecontainer("load",url1+next,{reload:false});
+				else $(".next").addClass("ui-state-disabled");
+			    if(!getNext($sel,null,-1)) $(".prev").addClass("ui-state-disabled");
+			    $(window).trigger('resize');
+			});
+			$(function(){});
+			function getChatroomByUser(url,$sel){
+				var action = arguments.callee.name;
+				var name = $.mobile.path.parseLocation().search.replace('?room=','');
+				name=decodeURIComponent(name);
+				$sel.empty();
+				ajax(url,{action:action},function(res){
+					if(res)
+						for(var i in res)
+							$sel.append($("<option></option>").attr("value",res[i].name).text(res[i].name));
+					$sel.val(name).selectmenu('refresh');
+				});
+			}
+			function getMembers(url,callback){
+				var name = $.mobile.path.parseLocation().search.replace('?room=','');
+				name=decodeURIComponent(name);
+				ajax(url,{action:'getChatroomByUser'},function(res){
+					if(res) for(var i in res) if(res[i].name==name) callback(res[i].userNames);
+				});
+			}
+			function getChatMessages(url,room){
+				var action = arguments.callee.name;
+				var name = $.mobile.path.parseLocation().search.replace('?room=','');
+				name=decodeURIComponent(name);
+				var $content=$(uiPageActiveContent);
+				var cached=room==name;
+				if(room)name=room;
+				if(!name) //:不清空
+				$content.empty();
+				if(!rec[name])rec[name]={};
+				var date=rec[name].date;
+				if(!date && rec[name].res && rec[name].res.length)
+					date=rec[name].res[rec[name].res.length-1].date;
+				if(!room){
+					rec[name].res=null;
+					date=null;
+				}
+				if(rec[name].res && (!room || cached)){ //-1:有存&(本間+當間)
+					console.log(1,room,name,rec[name].res.length,rec);
+					rec[name]=setChatMessage(rec[name].res,$content,name);
+					rec[name].res=null;
+				}else if(!rec[name].res) //-2:沒存
+				ajax(url,{action:action,name:name,date:date},function(res){
+					if(!room) //-2.1:(本間+當間)不存
+					rec[name]=setChatMessage(res,$content,name);
+					else if (cached) rec[name].res=res;
+					else rec[name].res=res; //-2.2:別間要存
+					console.log(2,room,name,res!=null?res.length:res,rec);
+				});
+				else console.log(3,room,name,rec); //-3:有存&別間
+			}
+			function setChatMessage(res,$content,name){
+					var div1='<div style="font-size:12px"></div>',
+						div2='<div style="display:inline-block;padding:8px;border-radius:10px;background-color:#99CCFF"></div>',
+						span='<span></span>',
+						span1='<span style="position:relative;top:5px;font-size:12px"></span>',
+						p='<p></p>',
+						p1='<p style="text-align:center;color:blue"></p>',
+						p2='<p style="text-align:right"></p>',
+						span2='<span class="last" style="display:none"></span>',
+						last0=$content.children('p').last().children('.last').html(),
+						d0;
+					if(res)
+						for(var i in res)
+						{
+							var d1=res[i].date.substring(0,res[i].date.indexOf(' ')),
+								d2=res[i].date.substring(0,res[i].date.indexOf('.'));
+							d2=d2.replace(d1,'&nbsp;&nbsp;')+'&nbsp;&nbsp;';
+							var last1=res[i].name+'-'+res[i].date;
+							if(!afterLast(last0,last1)) continue;//:last
+							if(!d0 || d0!=d1){
+								d0=d1;
+								if(dateLast(last0,last1))//:last
+								$content.append($(p1).append($(span).html(d0)));
+							}
+							if($('#userName').html()==res[i].name) $content.append($(p2).append(
+								$(span2).html(last1)).append(
+								$(span1).html(d2)).append(
+								$(div2).append($(span).html(res[i].message))));
+							else $content.append($(p).append(
+								$(span2).html(last1)).append(
+								$(div1).html(res[i].name)).append(
+								$(div2).append($(span).html(res[i].message))).append(
+								$(span1).html(d2))
+							);
+						}
+					$('.divData',uiPageActive).empty().html(name);
+					$(":mobile-pagecontainer").pagecontainer("getActivePage").children(uiContent).scrollTop($content.outerHeight());
+				if(res && res.length)
+				return ({name:res[i].name,date:res[i].date
+				});
+				if(last0) return {name:last0.substring(0,last0.indexOf('-')),date:last0.substring(last0.indexOf('-')+1)};
+			}
+			function afterLast(last0,last1){
+				if(last0){
+					var name0=last0.substring(0,last0.indexOf('-')),date0=last0.substring(last0.indexOf('-')+1),
+						name1=last1.substring(0,last1.indexOf('-')),date1=last1.substring(last1.indexOf('-')+1);
+					if(date1>date0) return true;
+					else if(date1==date0 && name0 != name1) return true;
+					return false;
+				}
+				return true;
+			}
+			function dateLast(last0,last1){
+				if(last0){
+					var date0=last0.substring(last0.indexOf('-')+1,last0.indexOf(' ')),
+						date1=last1.substring(last1.indexOf('-')+1,last1.indexOf(' '));
+					return date1>date0;
+				}
+				return true;
+			}
+			function ajax(url,data,callback){
+				$.ajax({
+					url:url,method:'get',dataType:'json',
+					data:data,
+					success:function(res){callback(res);},
+					error:function(jqXHR,textStatus,errorThrown){
+						var msg1='服務異常:',msg2=jqXHR.status+':'+errorThrown,redirect='page?room&error'+jqXHR.status;
+						if(jqXHR.status=='200'){
+							msg1='重新導向:';
+							msg2=redirect=jqXHR.getResponseHeader('url');
+						}
+						else if(jqXHR.status=='401'){
+							msg1='重新導向:';
+							msg2=redirect=jqXHR.getResponseHeader('Location');
+							if(!redirect)msg2=redirect='/?error'+jqXHR.status;
+						}
+						new MsgPopup(uiPageActive + ' .popupMsg').popup('Error',msg1,msg2,redirect);
+						$('.divData',uiPageActive).empty().append(errorMsg(jqXHR.status+':'+errorThrown));
+						return;
+						if(jqXHR.status=='200')document.URL=location.href=jqXHR.getResponseHeader('url');
+					}
+					//,beforeSend:function(){$('.divData',uiPageActive).empty().html(data && data.name ? data.name : url);}
+				});
+			}
+			function getNext($sel,$page,n){
+				var t;
+				$sel.children('option').each(function(){
+					if(n>0){
+						if(t){
+							t=$(this).val();
+							if($page)$page.jqmData('next',t);
+							return false;
+						}else if($(this).val()==$sel.val())
+							t=$(this).val();
+					}else
+						if($(this).val()==$sel.val()){
+							if($page)$page.jqmData('prev',t);
+							return false;
+						}else
+							t=$(this).val();
+				});
+				return t!=$sel.val()?t:null;
+			}
+			function errorMsg(msg){return $('<span style="color:red"></span>').html(msg);}
+		</script>
+		<style>
+			.custom-corners .ui-bar {
+				-webkit-border-top-left-radius: inherit;
+				border-top-left-radius: inherit;
+				-webkit-border-top-right-radius: inherit;
+				border-top-right-radius: inherit;
+			}
+			.custom-corners .ui-body {
+				border-top-width: 0;
+				-webkit-border-bottom-left-radius: inherit;
+				border-bottom-left-radius: inherit;
+				-webkit-border-bottom-right-radius: inherit;
+				border-bottom-right-radius: inherit;
+			}
+		</style>
+		<title>room</title>
+	</head>
+	<body>
+		<div id='header' data-role="header" data-position="fixed" data-tap-toggle="false">
+			<a id='refresh' data-icon="refresh">refresh</a>
+			<h1 id='userName' style='display:none'>userName</h1>
+			<h1 id='shortName'>shortName</h1>
+			<fieldset data-role="controlgroup" class="control ui-btn-right" data-type="horizontal">
+				<select><option value=""></option></select>
+			</fieldset>
+			<div data-role="navbar" data-iconpos="left">
+				<ul>
+					<li><button id='members' class="ui-btn" data-icon="user">members</button></li>
+					<li><a id='logout' href="#" data-icon="power">Logout</a></li>
+				</ul>
+			</div>
+		</div>
+		<div data-role="page" class='chat-page' data-dom-cache="true" data-prev="" data-next="" data-url="">
+			<div role="main" class="ui-content" style='border:0px solid red'>
+				<div class="ui-corner-all custom-corners" style='max-width:600px;margin:auto'>
+			        <div class="ui-bar ui-bar-a">
+			          <h3 class='divData'>Heading</h3>
+			        </div>
+			        <div class="content ui-body ui-body-a">
+			        </div>
+				</div>
+			</div>
+			<div data-role="popup" class="popupMsg" data-overlay-theme="a" data-theme="a" style='min-width:300px;max-width:600px'>
+	        	<div data-role="header" data-theme="b" class="ui-corner-top">
+					<h1>h1</h1>
+				</div>
+				<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+					<h3 class="ui-title">ui-title</h3>
+					<p style='text-align:center'>p</p>
+				</div>
+				<a href="#" data-role='button' data-inline="true" data-rel="back" data-transition="flow" data-theme="b"
+					class='ui-btn ui-btn-icon-left ui-icon-delete ui-mini ui-corner-all'>Cancel</a>
+			</div>
+	    </div>
+		<div id='footer' data-role="footer" data-position="fixed" data-tap-toggle="false">
+			<div data-role="controlgroup" class="control ui-btn-left" data-type="horizontal" data-mini="true">
+	        	<a href="#" class="prev ui-btn ui-btn-icon-notext ui-icon-carat-l">Previous</a>
+	        	<a href="#" class="next ui-btn ui-btn-icon-notext ui-icon-carat-r">Next</a>
+	        </div>
+	        <div id='divMsgInput' style=''><input type="text" data-theme="a" data-mini="true" /></div>
+			<a href="#trivia-newyork" id="trivia-button" data-rel="popup"
+				class="trivia-btn ui-btn ui-btn-right ui-btn-icon-left ui-icon-info ui-mini ui-corner-all">Trivia</a>
+	    </div>
+	</body>
+</html>

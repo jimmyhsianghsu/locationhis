@@ -1,0 +1,69 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<title>Chatroom</title>
+		<script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+		<script>
+			$(function(){});
+			var url='chatroom';
+			function ajax(action){
+				var username,password,name,message;
+				username=$('#username').val();
+				password=$('#password').val();
+				name=$('#name').val();
+				message=$('#message').val();
+				$.ajax({
+					url:url,method:'get',dataType:'json',
+					username:username,password:password,
+					data:{action:action,name:name,message:message},
+					success:function(data){$('#divData').empty().append(tab(data));},
+					error:function(jqXHR,textStatus,errorThrown){$('#divData').append(errorMsg(jqXHR.status+':'+errorThrown));}
+					,headers:{'Authorization':'Basic '+btoa(username+':'+password)}
+					,beforeSend:function(){$('#divData').empty();}
+				});
+			}
+			function tab(data){
+				var $tab=$("<table border='1' style='border-collapse:collapse'></table>");
+				if (data){
+					if(!data.length)data=[data];
+					var $tr0=$('<tr></tr>').appendTo($tab);
+					for(var i in data[0])$tr0.append($('<td></td>').html(i));
+					for(var i in data){
+						var $tr=$('<tr></tr>').appendTo($tab);
+						for(var i1 in data[i])$tr.append($('<td></td>').html(data[i][i1]));
+					}
+				}
+				return $tab;
+			}
+			function errorMsg(msg){return $('<span style="color:red"></span>').html(msg);}
+		</script>
+	</head>
+	<body>
+		<div style="float:left;margin:15px">
+			<h3>action</h3>
+			<table border='1' style='border-collapse:collapse'>
+				<tr><td style="font-weight:bold;">username</td><td><input id='username' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">password</td><td><input id='password' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">name</td><td><input id='name' type='text' /></td></tr>
+				<tr><td style="font-weight:bold;">message</td><td><input id='message' type='text' /></td></tr>
+				<tr>
+					<td colspan='2'>
+						<input type='button' value='getChatroomByName' onclick='ajax(this.value)' />
+						<input type='button' value='getChatroomByUser' onclick='ajax(this.value)' />
+						<input type='button' value='getChatroomAll' onclick='ajax(this.value)' /><br/>
+						<input type='button' value='saveChatroom' onclick='ajax(this.value)' />
+						<input type='button' value='addUser' onclick='ajax(this.value)' />
+						<input type='button' value='addMessage' onclick='ajax(this.value)' />
+						<input type='button' value='getChatMessages' onclick='ajax(this.value)' />
+						<br/><input type='button' value='getName' onclick='ajax(this.value)' />
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div style="float:left;margin:15px">
+			<h3>data</h3>
+			<div id='divData'></div>
+		</div>
+	</body>
+</html>
